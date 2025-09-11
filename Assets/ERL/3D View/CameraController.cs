@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
@@ -27,6 +28,13 @@ public class CameraController : MonoBehaviour
     private Camera cam;
     private bool isOrthographic = false;
     
+    // Input System
+    [SerializeField] private InputActionAsset inputActions;
+    private InputAction rightClickAction;
+    private InputAction middleClickAction;
+    private InputAction scrollWheelAction;
+    private InputAction pointAction;
+    
     // Animation variables for smooth view transitions
     private bool isAnimating = false;
     private float animationStartTime;
@@ -50,6 +58,30 @@ public class CameraController : MonoBehaviour
         
         // Ensure camera can handle very small orthographic sizes
         cam.nearClipPlane = 0.0001f;
+        
+        // Initialize Input System
+        if (inputActions != null)
+        {
+            rightClickAction = inputActions.FindAction("UI/RightClick");
+            middleClickAction = inputActions.FindAction("UI/MiddleClick");
+            scrollWheelAction = inputActions.FindAction("UI/ScrollWheel");
+            pointAction = inputActions.FindAction("UI/Point");
+            
+            inputActions.Enable();
+        }
+        else
+        {
+            Debug.LogError("Input Actions asset not assigned! Please assign the InputSystem_Actions asset in the inspector.");
+        }
+    }
+    
+    private void OnDestroy()
+    {
+        // Cleanup Input System
+        if (inputActions != null)
+        {
+            inputActions.Disable();
+        }
     }
 
     private void Update()
@@ -80,9 +112,11 @@ public class CameraController : MonoBehaviour
         else
         {
             // Right mouse button for orbit
-            if (Input.GetMouseButton(1))
+            if (rightClickAction != null && rightClickAction.IsPressed())
             {
-                Vector3 mouseDelta = Input.mousePosition - lastMousePosition;
+                //Debug.Log("Right mouse button pressed");
+                Vector2 mousePosition = pointAction.ReadValue<Vector2>();
+                Vector3 mouseDelta = new Vector3(mousePosition.x, mousePosition.y, 0) - lastMousePosition;
                 
                 // Perspective mode: Original orbiting behavior
                 rotationX += mouseDelta.x * orbitSpeed * Time.deltaTime;
@@ -94,9 +128,10 @@ public class CameraController : MonoBehaviour
         }
 
         // Middle mouse button for pan
-        if (Input.GetMouseButton(2))
+        if (middleClickAction != null && middleClickAction.IsPressed())
         {
-            Vector3 mouseDelta = Input.mousePosition - lastMousePosition;
+            Vector2 mousePosition = pointAction.ReadValue<Vector2>();
+            Vector3 mouseDelta = new Vector3(mousePosition.x, mousePosition.y, 0) - lastMousePosition;
             
             // Calculate pan speed based on zoom distance
             float zoomAdjustedPanSpeed = basePanSpeed * (currentZoomDistance * panZoomFactor);
@@ -108,20 +143,21 @@ public class CameraController : MonoBehaviour
         }
 
         // Mouse scroll wheel for zoom
-        float scrollInput = Input.GetAxis("Mouse ScrollWheel");
-        if (scrollInput != 0 && !IsPointerOverUI())
+        Vector2 scrollInput = scrollWheelAction != null ? scrollWheelAction.ReadValue<Vector2>() : Vector2.zero;
+        float scrollValue = scrollInput.y;
+        if (scrollValue != 0 && !IsPointerOverUI())
         {
             if (isOrthographic)
             {
                 // Orthographic zoom (only adjust size)
-                orthographicSize -= scrollInput * orthographicZoomSpeed;
+                orthographicSize -= scrollValue * orthographicZoomSpeed;
                                 
                 cam.orthographicSize = orthographicSize;
             }
             else
             {
                 // Perspective zoom (adjust distance)
-                currentZoomDistance -= scrollInput * zoomSpeed;
+                currentZoomDistance -= scrollValue * zoomSpeed;
                 Vector3 direction = transform.rotation * Vector3.forward;
                 transform.position = targetPosition - direction * currentZoomDistance;
             }
@@ -133,7 +169,8 @@ public class CameraController : MonoBehaviour
             transform.position = targetPosition - direction * currentZoomDistance;
         }
 
-        lastMousePosition = Input.mousePosition;
+        Vector2 currentMousePosition = pointAction != null ? pointAction.ReadValue<Vector2>() : Vector2.zero;
+        lastMousePosition = new Vector3(currentMousePosition.x, currentMousePosition.y, 0);
     }
 
     public void SwitchToOrthographic()

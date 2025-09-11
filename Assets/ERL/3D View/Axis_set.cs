@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class Axis_set : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
 {
@@ -32,10 +33,41 @@ public class Axis_set : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
     private LineRenderer rayLineRenderer;
     private float rayTimer = 0f;
     
+    // Input System
+    [SerializeField] private InputActionAsset inputActions;
+    private InputAction pointAction;
+    private InputAction clickAction;
+    
     void Start()
     {
         InitializeReferences();
         SetupRayVisualization();
+        InitializeInputSystem();
+    }
+    
+    void InitializeInputSystem()
+    {
+        // Initialize Input System
+        if (inputActions != null)
+        {
+            pointAction = inputActions.FindAction("UI/Point");
+            clickAction = inputActions.FindAction("UI/Click");
+            
+            inputActions.Enable();
+        }
+        else
+        {
+            Debug.LogError("Input Actions asset not assigned! Please assign the InputSystem_Actions asset in the inspector.");
+        }
+    }
+    
+    void OnDestroy()
+    {
+        // Cleanup Input System
+        if (inputActions != null)
+        {
+            inputActions.Disable();
+        }
     }
     
     void InitializeReferences()
@@ -164,7 +196,8 @@ public class Axis_set : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
         }
         
         // Convert local position to normalized position (0-1)
-        Vector2 normalizedPosition = GetNormalizedPosition(Input.mousePosition);
+        Vector2 mousePosition = pointAction != null ? pointAction.ReadValue<Vector2>() : Vector2.zero;
+        Vector2 normalizedPosition = GetNormalizedPosition(mousePosition);
         
         // Create a ray from the camera through the normalized position
         Ray ray = rayCamera.ViewportPointToRay(normalizedPosition);
@@ -272,7 +305,7 @@ public class Axis_set : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
         }
         
         // Alternative click detection using Input system
-        if (Input.GetMouseButtonDown(0))
+        if (clickAction != null && clickAction.WasPressedThisFrame())
         {
             if (showDebugInfo)
                 Debug.Log("Mouse button down detected in Update");
@@ -283,7 +316,8 @@ public class Axis_set : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
                 if (showDebugInfo)
                     Debug.Log("Mouse is over RawImage!");
                     
-                HandleClick(Input.mousePosition);
+                Vector2 mousePosition = pointAction != null ? pointAction.ReadValue<Vector2>() : Vector2.zero;
+                HandleClick(mousePosition);
             }
         }
     }
@@ -294,9 +328,10 @@ public class Axis_set : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
             return false;
             
         // Check if mouse is over this UI element
+        Vector2 mousePosition = pointAction != null ? pointAction.ReadValue<Vector2>() : Vector2.zero;
         return RectTransformUtility.RectangleContainsScreenPoint(
             rawImageRectTransform, 
-            Input.mousePosition, 
+            mousePosition, 
             uiCamera
         );
     }
