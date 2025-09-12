@@ -10,7 +10,7 @@ public class Unity_2F_85 : MonoBehaviour
     private const float s_min = 0.0f;
     private const float s_max = 85.0f;
     //      Velocity in mm/s.
-    private const float v_min = 20.0f;
+    private const float v_min = 0f;
     private const float v_max = 150.0f;
     //  Polynomial coefficients.
     private readonly float[] coefficients = new float[] { 1.4618779830656545e-08f, -2.221783401011447e-06f,
@@ -19,7 +19,7 @@ public class Unity_2F_85 : MonoBehaviour
 
     // Private variables.
     //  Motion parameters.
-    private float __speed;
+    private float speed;
     private float __stroke;
     private float __theta;
     private float __theta_i;
@@ -38,8 +38,7 @@ public class Unity_2F_85 : MonoBehaviour
 
     // Public variables.
     public bool start_movemet;
-    //  Input motion parameters.
-    public float speed;
+    //  Input motion parameters. 
     public float stroke;
 
     private bool in_position;
@@ -71,7 +70,7 @@ public class Unity_2F_85 : MonoBehaviour
                 {
                     // If the values are out of range, clamp them.
                     __stroke = Mathf.Clamp(stroke, s_min, s_max);
-                    __speed = Mathf.Clamp(speed, v_min, v_max);
+                    speed = Mathf.Clamp(speed, v_min, v_max);
 
                     if (start_movemet == true)
                     {
@@ -95,7 +94,7 @@ public class Unity_2F_85 : MonoBehaviour
             case 2:
                 {
                     // Interpolate the orientation between the current position and the target position.
-                    __theta_i = Mathf.MoveTowards(__theta_i, __theta, __speed * Time.deltaTime);
+                    __theta_i = Mathf.MoveTowards(__theta_i, __theta, speed * Time.deltaTime);
 
                     // Change the orientation of the end-effector arm.
                     //  Right arm.
@@ -158,5 +157,24 @@ public class Unity_2F_85 : MonoBehaviour
         var drive2 = joint2.yDrive;
         drive2.target = positions[1];  // angle in degrees
         joint2.yDrive = drive2;
+    }
+
+ 
+    public void MoveGripperToPosition(float targetStroke, float moveSpeed = 12.5f)
+    {
+        stroke = Mathf.Clamp(220 - targetStroke, s_min, s_max);
+        speed = Mathf.Clamp(moveSpeed, v_min, v_max);
+        start_movemet = true;
+    }
+ 
+    public bool IsGripperInPosition()
+    {
+        return in_position;
+    }
+
+ 
+    public float GetCurrentStroke()
+    {
+        return __stroke;
     }
 }

@@ -100,7 +100,6 @@ public static class TrajectoryCalculator
         {
             //Debug.Log($"Triangular profile: dq={dq}, maxAcceleration={maxAcceleration}");
             t_acc = Mathf.Sqrt(dq / maxAcceleration);
-            Debug.Log($"Triangular profile: t_acc={t_acc}");
             t_flat = 0f;
             //Debug.Log($"Triangular profile: t_acc={t_acc}, t_flat={t_flat}");
         }
@@ -115,29 +114,23 @@ public static class TrajectoryCalculator
         float qi;
         if (currentTime < t_acc)  // Acceleration phase
         {
-            Debug.Log($"Acceleration phase: currentTime={currentTime}, t_acc={t_acc}");
             qi = startAngle + direction * 0.5f * maxAcceleration * currentTime * currentTime;
-            Debug.Log($"Acceleration phase: qi={qi}");
+            
         }
         else if (currentTime < t_acc + t_flat)  // Constant velocity
         {
-            Debug.Log($"Constant velocity phase: currentTime={currentTime}, t_acc={t_acc}, t_flat={t_flat}");
             qi = startAngle + direction * (d_acc + maxVelocity * (currentTime - t_acc));
-            Debug.Log($"Constant velocity phase: qi={qi}");
+            
         }
         else if (currentTime < TotalTimeLocal)  // Deceleration phase
         {
-            Debug.Log("Total time phase: currentTime=" + currentTime + " is greater than totalTime=" + totalTime);
-            Debug.Log($"Deceleration phase: currentTime={currentTime}, t_acc={t_acc}, t_flat={t_flat}");
             float td = currentTime - (t_acc + t_flat);
             qi = startAngle + shortestAngle - direction * 0.5f * maxAcceleration * (t_acc - td) * (t_acc - td);
-            Debug.Log($"Deceleration phase: qi={qi}, td={td}, t_acc={t_acc}, t_flat={t_flat}, startAngle={startAngle}, shortestAngle={shortestAngle}, direction={direction}, maxAcceleration={maxAcceleration}");
         }
         else
         {
-            Debug.Log($"Total time phase: currentTime={currentTime}, t_acc={t_acc}, t_flat={t_flat}");
             qi = startAngle + shortestAngle;
-            Debug.Log($"Total time phase: qi={qi}");
+            
         }
         //Debug.Log($"CalculateTrapezoidalTrajectory: qi={qi}");
         return qi;

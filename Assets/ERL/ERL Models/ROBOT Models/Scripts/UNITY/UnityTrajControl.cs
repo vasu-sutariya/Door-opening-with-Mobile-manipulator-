@@ -79,7 +79,6 @@ public class UnityTrajControl : MonoBehaviour
             {
                 for (int i = 0; i < 6; i++)
                 {
-                    Debug.Log($"Calculating trajectory for joint {i}: Start Angle={startAngles[i]}, Shortest Angle={AngleChanges[i]}, Current Time={currentTime}, Total Time={totalTime}, Trajectory Type={currentTrajectoryType}, Time Given={currentTimeGiven}, Blend Enabled={currentBlendEnabled}, Velocity={currentVelocity}, Acceleration={currentAcceleration}");
                     currentTargetAngles[i] = TrajectoryCalculator.CalculateTrajectory(
                         startAngles[i], 
                         AngleChanges[i], 
@@ -124,22 +123,19 @@ public class UnityTrajControl : MonoBehaviour
         if (movementType == MovementType.MoveJ)
         {
             endAngles =  new float[6];
-            System.Array.Copy(target, endAngles, 6);
-            Debug.Log($"End Angles: {string.Join(", ", endAngles)}"); 
+            System.Array.Copy(target, endAngles, 6); 
             // For MoveJ: Calculate angular distance in degrees
             for (int i = 0; i < 6; i++)
             {
                 AngleChanges[i] = ((endAngles[i] - startAngles[i] + 540) % 360) - 180;
                 if (AngleChanges[i] < 0.001f && AngleChanges[i] > -0.001f)
                 {
-                    Debug.Log($"Shortest Angle is too small for joint {i}: {AngleChanges[i]},  setting to 0");
                     AngleChanges[i] = 0f;
                 }
                 float absDistance = Mathf.Abs(AngleChanges[i]);
                 maxDistance = Mathf.Max(maxDistance, absDistance);
             }
-            Debug.Log($"Shortest Angles: {string.Join(", ", AngleChanges)}");
-            Debug.Log($"Max Distance: {maxDistance}");
+          
         }
         else if (movementType == MovementType.MoveL)
         {
