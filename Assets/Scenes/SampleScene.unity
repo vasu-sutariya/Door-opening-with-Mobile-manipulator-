@@ -2860,6 +2860,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2656649538015808303}
     m_Modifications:
+    - target: {fileID: 4961080549367416140, guid: 51318b3c9b416544f9f4a7b06a272aa9, type: 3}
+      propertyPath: m_ParentAnchorPosition.y
+      value: 0.000000022351742
+      objectReference: {fileID: 0}
     - target: {fileID: 6176004239630219695, guid: 51318b3c9b416544f9f4a7b06a272aa9, type: 3}
       propertyPath: m_Name
       value: Robotiq_2F_85
@@ -2905,6 +2909,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8527090595493967022, guid: 51318b3c9b416544f9f4a7b06a272aa9, type: 3}
+      propertyPath: m_ParentAnchorPosition.y
+      value: -2.2351741e-10
+      objectReference: {fileID: 0}
+    - target: {fileID: 8527090595493967022, guid: 51318b3c9b416544f9f4a7b06a272aa9, type: 3}
       propertyPath: m_ParentAnchorPosition.z
       value: 0.0013379998
       objectReference: {fileID: 0}
@@ -2927,6 +2935,10 @@ PrefabInstance:
     - target: {fileID: 8913742103894238115, guid: 51318b3c9b416544f9f4a7b06a272aa9, type: 3}
       propertyPath: m_LocalPosition.z
       value: 0.001338
+      objectReference: {fileID: 0}
+    - target: {fileID: 9128936006089982216, guid: 51318b3c9b416544f9f4a7b06a272aa9, type: 3}
+      propertyPath: m_ParentAnchorPosition.y
+      value: -2.2351741e-10
       objectReference: {fileID: 0}
     - target: {fileID: 9128936006089982216, guid: 51318b3c9b416544f9f4a7b06a272aa9, type: 3}
       propertyPath: m_ParentAnchorPosition.z
@@ -2965,7 +2977,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6fff2eb23900e649b6382c1d92f3898, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UnityRobotManager
-  robotIP: 192.168.12.100
+  robotIP: 138.250.202.166
   dataPort: 30002
   commandPort: 30003
   jointAnglesText: {fileID: 0}
@@ -2973,6 +2985,17 @@ MonoBehaviour:
   robotStatusText: {fileID: 0}
   connectionStatusText: {fileID: 0}
   showDebugInfo: 0
+--- !u!114 &6662549595916065482 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 67707076230557530, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
+  m_PrefabInstance: {fileID: 9118166441869673257}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6662549595916065472}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25f25e2dceff824439d812387a1bcf7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UnityJointController
 --- !u!114 &6662549595916065483 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7873114043005166518, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
@@ -3009,7 +3032,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 327404421317254092, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
       propertyPath: m_ParentAnchorPosition.y
-      value: -0.11985
+      value: -0.11984998
       objectReference: {fileID: 0}
     - target: {fileID: 327404421317254092, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
       propertyPath: m_ParentAnchorPosition.z
@@ -3041,7 +3064,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3030766636866691562, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
       propertyPath: m_ParentAnchorPosition.x
-      value: -0.4784
+      value: -0.47840002
       objectReference: {fileID: 0}
     - target: {fileID: 3030766636866691562, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
       propertyPath: m_ParentAnchorPosition.y
@@ -3088,9 +3111,17 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 6662549595916065477}
     - target: {fileID: 6477388286129995018, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
+      propertyPath: gripperposition2
+      value: 200
+      objectReference: {fileID: 0}
+    - target: {fileID: 6477388286129995018, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
       propertyPath: Unityrobotmanager
       value: 
       objectReference: {fileID: 6662549595916065480}
+    - target: {fileID: 6477388286129995018, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
+      propertyPath: Unityjointcontroller
+      value: 
+      objectReference: {fileID: 6662549595916065482}
     - target: {fileID: 6477388286129995018, guid: 989a38039fa9c164aa45c05d0e2ec092, type: 3}
       propertyPath: ur16eInverseKinematics
       value: 

@@ -33,7 +33,7 @@ public class UnityTrajControl : MonoBehaviour
     private float currentTime = 0f;
     private float[] currentTargetAngles = new float[6];
     public bool isTrajectoryActive = false;
-    
+    public MovementType currentMovementType ;
     // Trajectory completion timing
     private float trajectoryStartTime;
     private float actualCompletionTime = -1f;
@@ -43,7 +43,7 @@ public class UnityTrajControl : MonoBehaviour
     public UnityRobotManager Unityrobotmanager;
 
     // Trajectory planning state
-    private TrajectoryType currentTrajectoryType = TrajectoryType.Cubic;
+    private TrajectoryType currentTrajectoryType = TrajectoryType.JointCubic;
     private bool currentTimeGiven = false;
     private bool currentBlendEnabled = false;
     private float currentVelocity = 30f;
@@ -57,9 +57,9 @@ public class UnityTrajControl : MonoBehaviour
         public float blendRadius;
         public float time;
         public MovementType movementType;
-        public bool sendToRobot;
+        public int sendToRobot;
 
-        public MovementCommand(float[] angles, float vel, float acc, float blend, float t, MovementType type)
+        public MovementCommand(float[] angles, float vel, float acc, float blend, float t, MovementType type, int sendToRobot)
         {
             targetAngles = angles;
             velocity = vel;
@@ -67,7 +67,7 @@ public class UnityTrajControl : MonoBehaviour
             blendRadius = blend;
             time = t;
             movementType = type;
-            sendToRobot = true;
+            sendToRobot = sendToRobot;
         }
     }
 
@@ -85,22 +85,38 @@ public class UnityTrajControl : MonoBehaviour
             
             if (currentTime < totalTime)
             {
-                for (int i = 0; i < 6; i++)
+                if (currentMovementType == MovementType.MoveJ)
                 {
-                    currentTargetAngles[i] = TrajectoryCalculator.CalculateTrajectory(
-                        startAngles[i], 
-                        AngleChanges[i], 
-                        currentTime, 
-                        totalTime,
-                        currentTrajectoryType,
-                        currentTimeGiven,
-                        currentBlendEnabled,
-                        currentVelocity,
-                        currentAcceleration
-                    );
+                    for (int i = 0; i < 6; i++)
+                    {
+                        currentTargetAngles[i] = TrajectoryCalculator.CalculateJointTrajectory(
+                            startAngles[i], 
+                            AngleChanges[i], 
+                            currentTime, 
+                            totalTime,
+                            currentTrajectoryType,
+                            currentTimeGiven,
+                            currentBlendEnabled,
+                            currentVelocity,
+                            currentAcceleration
+                        );
 
+                    }
+                    robotController.ChangeUnityTargetAngles(currentTargetAngles);
                 }
-                robotController.ChangeUnityTargetAngles(currentTargetAngles);
+                else if (currentMovementType == MovementType.MoveL)
+                {
+                    // For MoveL, we need to calculate the current pose and update joint angles
+                    // This is a simplified implementation - in practice, you'd use proper inverse kinematics
+                    for (int i = 0; i < 6; i++)
+                    {
+                        // Simple linear interpolation for now
+                        float t = currentTime / totalTime;
+                        currentTargetAngles[i] = Mathf.Lerp(startAngles[i], endAngles[i], t);
+                    }
+                    robotController.ChangeUnityTargetAngles(currentTargetAngles);
+                }
+
             }
             else
             {
@@ -112,10 +128,10 @@ public class UnityTrajControl : MonoBehaviour
         }
     }
     
-    public void Goto(float[] target, MovementType movementType = MovementType.MoveJ, float velocity = -1f, float acceleration = -1f, float blendRadius = -1f, float time = -1f, bool sendToRobot = false)
+    public void Goto(float[] target, MovementType movementType = MovementType.MoveJ, float velocity = -1f, float acceleration = -1f, float blendRadius = -1f, float time = -1f, int sendToRobot = 0)
     {
 
-        
+        currentMovementType = movementType;
 
 
         
@@ -154,7 +170,33 @@ public class UnityTrajControl : MonoBehaviour
         }
         else if (movementType == MovementType.MoveL)
         {
+            // For MoveL: Convert target pose array to transform matrix
+            // Assuming target array contains [x, y, z, roll, pitch, yaw]
+            Matrix4x4 targetTransform = AngleConvert.PoseToTransform(target[0], target[1], target[2], 
+                                                                   target[3], target[4], target[5]);
             
+            // Calculate target joint angles using inverse kinematics
+            var ikSolutions = inverseKinematics.CalculateIK(targetTransform);
+            if (ikSolutions.Count > 0)
+            {
+                endAngles = new float[6];
+                System.Array.Copy(ikSolutions[0], endAngles, 6); // Use first solution
+            }
+            else
+            {
+                // If no IK solution found, use current angles
+                endAngles = new float[6];
+                System.Array.Copy(startAngles, endAngles, 6);
+                Debug.LogWarning("No IK solution found for target pose, using current position");
+            }
+            
+            // Calculate linear distance in meters for trajectory timing
+            // Simple approximation - in practice, you'd calculate actual Cartesian distance
+            for (int i = 0; i < 3; i++) // Only use position components (x, y, z)
+            {
+                float distance = Mathf.Abs(target[i]);
+                maxDistance = Mathf.Max(maxDistance, distance);
+            }
         }
         
         // Handle 8 different trajectory planning cases
@@ -174,10 +216,19 @@ public class UnityTrajControl : MonoBehaviour
                 if (!blendEnabled)
                 {
                     // Case 1: MOVEJ - time given, blend radius 0 (ignore max vel, max acc)
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
                     totalTime = time;
-                    currentTrajectoryType = TrajectoryType.Cubic; // Use cubic trajectory with given time
+                    currentTrajectoryType = TrajectoryType.JointCubic; // Use cubic trajectory with given time
                     Debug.Log($"Case 1: MOVEJ with cubic trajectory, explicit time={time:F2}s, no blending");
-                    if (sendToRobot)
+                    }
+                     
+                    if (sendToRobot == 2 )
+                    {
+                        Unityrobotmanager.SendMoveJCommand(target, acceleration, velocity, totalTime, 0);
+                    }
+
+                    if (sendToRobot == 3)
                     {
                         Unityrobotmanager.SendMoveJCommand(target, acceleration, velocity, totalTime, 0);
                     }
@@ -187,31 +238,54 @@ public class UnityTrajControl : MonoBehaviour
                 else
                 {
                     // Case 2: MOVEJ - time given, blend radius not 0 (ignore max vel, max acc)
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
                     totalTime = time;
-                    currentTrajectoryType = TrajectoryType.Cubic; // Can be changed to appropriate type
+                    currentTrajectoryType = TrajectoryType.JointCubicBlend; // Can be changed to appropriate type
                     Debug.Log($"Case 2: MOVEJ with explicit time={time:F2}s, blend radius={blend:F3}m");
+                    }
+                    if (sendToRobot == 2 || sendToRobot == 3)
+                    {
+                            Unityrobotmanager.SendMoveJCommand(target, acceleration, velocity, totalTime, 0.1f);
+                    }
+                    
                 }
             }
             else
             {
                 if (!blendEnabled)
                 {
+                    
                     // Case 3: MOVEJ - time 0, blend radius 0
-                    totalTime = TrajectoryCalculator.CalculateTrapezoidalTime(maxDistance, vel, acc);
-                    currentTrajectoryType = TrajectoryType.Trapezoidal; // Use trapezoidal trajectory
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
+                    totalTime = TrajectoryCalculator.CalculateTrapezoidalJointTime(maxDistance, vel, acc);
+                    currentTrajectoryType = TrajectoryType.JointTrapezoidal; // Use trapezoidal trajectory
                     Debug.Log($"Case 3: MOVEJ with trapezoidal trajectory, calculated time={totalTime:F2}s, no blending");
-                    if (sendToRobot)
+                    }
+                    if (sendToRobot == 2)
                     {
                         Unityrobotmanager.SendMoveJCommand(target, acceleration, velocity, totalTime, 0);
+                    }
+                    if (sendToRobot == 3)
+                    {
+                        Unityrobotmanager.SendMoveJCommand(target, acceleration, velocity, 0, 0);
                     }
                 
                 }
                 else
                 {
                     // Case 4: MOVEJ - time 0, blend radius not 0
-                    totalTime = TrajectoryCalculator.CalculateRequiredTime(maxDistance, vel, acc);
-                    currentTrajectoryType = TrajectoryType.Cubic; // Can be changed to appropriate type
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
+                    totalTime = TrajectoryCalculator.CalculateTrapezoidalJointTime(maxDistance, vel, acc);
+                    currentTrajectoryType = TrajectoryType.JointCubicBlend; // Can be changed to appropriate type
                     Debug.Log($"Case 4: MOVEJ with calculated time={totalTime:F2}s, blend radius={blend:F3}m");
+                    }
+                    if (sendToRobot == 2 || sendToRobot == 3)
+                    {
+                        Unityrobotmanager.SendMoveJCommand(target, acceleration, velocity, 0, 0.1f);
+                    }
                 }
             }
         }
@@ -222,16 +296,38 @@ public class UnityTrajControl : MonoBehaviour
                 if (!blendEnabled)
                 {
                     // Case 5: MOVEL - time given, blend radius 0 (ignore max vel, max acc)
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
                     totalTime = time;
-                    currentTrajectoryType = TrajectoryType.Linear; // Linear for MoveL
+                    currentTrajectoryType = TrajectoryType.LinearCubic; // Linear for MoveL
                     Debug.Log($"Case 5: MOVEL with explicit time={time:F2}s, no blending");
+                    }
+                    if (sendToRobot == 2)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, totalTime, 0);
+                    }
+                    if (sendToRobot == 3)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, time, 0);
+                    }
                 }
                 else
                 {
                     // Case 6: MOVEL - time given, blend radius not 0 (ignore max vel, max acc)
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
                     totalTime = time;
-                    currentTrajectoryType = TrajectoryType.Linear; // Linear for MoveL
+                    currentTrajectoryType = TrajectoryType.LinearCubicBlend; // Linear for MoveL
                     Debug.Log($"Case 6: MOVEL with explicit time={time:F2}s, blend radius={blend:F3}m");
+                    }
+                    if (sendToRobot == 2)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, time, 0.1f);
+                    }
+                    if (sendToRobot == 3)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, time, 0.1f);
+                    }
                 }
             }
             else
@@ -239,16 +335,38 @@ public class UnityTrajControl : MonoBehaviour
                 if (!blendEnabled)
                 {
                     // Case 7: MOVEL - time 0, blend radius 0
-                    totalTime = TrajectoryCalculator.CalculateRequiredTime(maxDistance, vel, acc);
-                    currentTrajectoryType = TrajectoryType.Linear; // Linear for MoveL
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
+                    totalTime = TrajectoryCalculator.CalculateCubicLinearRequiredTime(maxDistance, vel, acc);
+                    currentTrajectoryType = TrajectoryType.LinearCubic; // Linear for MoveL
                     Debug.Log($"Case 7: MOVEL with calculated time={totalTime:F2}s, no blending");
+                    }
+                    if (sendToRobot == 2)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, totalTime, 0);
+                    }
+                    if (sendToRobot == 3)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, 0, 0);
+                    }
                 }
                 else
                 {
                     // Case 8: MOVEL - time 0, blend radius not 0
-                    totalTime = TrajectoryCalculator.CalculateRequiredTime(maxDistance, vel, acc);
-                    currentTrajectoryType = TrajectoryType.Linear; // Linear for MoveL
+                    if (sendToRobot == 1 || sendToRobot == 2)
+                    {
+                    totalTime = TrajectoryCalculator.CalculateCubicLinearRequiredTime(maxDistance, vel, acc);
+                    currentTrajectoryType = TrajectoryType.LinearCubicBlend; // Linear for MoveL
                     Debug.Log($"Case 8: MOVEL with calculated time={totalTime:F2}s, blend radius={blend:F3}m");
+                    }
+                    if (sendToRobot == 2)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, totalTime, 0.1f);
+                    }
+                    if (sendToRobot == 3)
+                    {
+                        Unityrobotmanager.SendMoveLCommand(target, acceleration, velocity, 0, 0.1f);
+                    }
                 }
             }
         }
@@ -261,13 +379,13 @@ public class UnityTrajControl : MonoBehaviour
     }
 
     // Convenience methods for MoveJ and MoveL
-    public void MoveJ(float[] targetAngles, float velocity = -1f, float acceleration = -1f, float blendRadius = -1f, float time = -1f, bool sendToRobot = false)
+    public void MoveJ(float[] targetAngles, float velocity = -1f, float acceleration = -1f, float blendRadius = -1f, float time = -1f, int sendToRobot = 0)
     {
         //Debug.Log($"MoveJ: {string.Join(", ", targetAngles)}, {velocity}, {acceleration}, {blendRadius}, {time}");     
         Goto(targetAngles, MovementType.MoveJ, velocity, acceleration, blendRadius, time, sendToRobot);
     }
     
-    public void MoveL(float[] targetPose, float velocity = -1f, float acceleration = -1f, float blendRadius = -1f, float time = -1f, bool sendToRobot = false)
+    public void MoveL(float[] targetPose, float velocity = -1f, float acceleration = -1f, float blendRadius = -1f, float time = -1f, int sendToRobot = 0)
     {
         //Debug.Log($"MoveL: {string.Join(", ", targetPose)}, {velocity}, {acceleration}, {blendRadius}, {time}");
         Goto(targetPose, MovementType.MoveL, velocity, acceleration, blendRadius, time, sendToRobot);

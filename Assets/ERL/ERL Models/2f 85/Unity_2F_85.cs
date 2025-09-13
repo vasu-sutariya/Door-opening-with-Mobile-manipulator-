@@ -26,6 +26,7 @@ public class Unity_2F_85 : MonoBehaviour
     // Private variables.
     //  Motion parameters.
     private float speed;
+    
     private float force;
     private float __stroke;
     private float __theta;
@@ -49,6 +50,11 @@ public class Unity_2F_85 : MonoBehaviour
     public float stroke;
 
     private bool in_position;
+
+    float unityStrokeMin = 0f;
+    float unityStrokeMax = 85f;
+    float realStrokeMin = 0f;
+    float realStrokeMax = 255f;
 
     // Start is called before the first frame update
     void Start()
@@ -75,7 +81,8 @@ public class Unity_2F_85 : MonoBehaviour
         {
             case 0:
                 {
-                    // If the values are out of range, clamp them.
+
+                    
                     __stroke = Mathf.Clamp(stroke, s_min, s_max);
                     speed = Mathf.Clamp(speed, v_min, v_max);
 
@@ -115,11 +122,11 @@ public class Unity_2F_85 : MonoBehaviour
                     L_Arm_ID_0.transform.localEulerAngles = new Vector3(0.0f, __theta_i, 0.0f);
                     L_Arm_ID_1.transform.localEulerAngles = new Vector3(0.0f, __theta_i, 0.0f);
                     L_Arm_ID_2.transform.localEulerAngles = new Vector3(0.0f, -__theta_i, 0.0f);
-
                     if(__theta_i == __theta)
                     {
                         in_position = true; start_movemet = false;
                         ctrl_state = 0;
+                        Debug.Log("in_position: " + in_position + " start_movemet: " + start_movemet + " ctrl_state: " + ctrl_state);
                     }
                 }
                 break;
@@ -170,6 +177,7 @@ public class Unity_2F_85 : MonoBehaviour
  
     public void MoveGripperToPosition(int targetStroke , int speed1 = 100 ,bool sendToRobot = false, int force1 = 255 )
     {
+        Debug.Log("MoveGripperToPosition: " + targetStroke + " speed1: " + speed1 + " force1: " + force1);
         if (sendToRobot)
         {
             robot_2f_85.SetGripperPosition(targetStroke);
@@ -177,11 +185,15 @@ public class Unity_2F_85 : MonoBehaviour
             robot_2f_85.SetGripperSpeed(speed1);
         }
 
-        stroke = Mathf.Clamp(220 - targetStroke, s_min, s_max);
+        // Convert from 0-255 (real robot) to 0-85 (Unity)
+        float clampedStroke = Mathf.Clamp(targetStroke, realStrokeMin, realStrokeMax);
+        float mappedStroke = (clampedStroke - realStrokeMin) / (realStrokeMax - realStrokeMin) * (unityStrokeMax - unityStrokeMin) + unityStrokeMin;
+        
+        stroke = Mathf.Clamp(85 - mappedStroke, s_min, s_max);
         force = force1;
         speed = speed1;
         start_movemet = true;
-        Debug.Log("start_movemet: " + start_movemet + " targetStroke: " + targetStroke + " speed1: " + speed1 + " force1: " + force1);
+        Debug.Log(" targetStroke: " + stroke + " speed1: " + speed + " force1: " + force);
     }
  
     public bool IsGripperInPosition()

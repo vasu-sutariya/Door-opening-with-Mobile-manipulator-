@@ -3,24 +3,34 @@ using System;
 
 public enum TrajectoryType
 {
-    Cubic,
-    Trapezoidal,
-    Linear
+    JointCubic,
+    JointTrapezoidal,
+    JointCubicBlend,
+    JointTrapezoidalBlend,
+    LinearCubic,
+    LinearTrapezoidal,
+    LinearCubicBlend,
+    LinearTrapezoidalBlend,
+
 }
 
 public static class TrajectoryCalculator
 {
     
 
-    public static float CalculateRequiredTime(float distance, float maxVelocity, float maxAcceleration)
-    {
-        float timeFromVelocity = distance / maxVelocity;
-        float timeFromAcceleration = Mathf.Sqrt(2 * distance / maxAcceleration);
-        return Mathf.Max(timeFromVelocity, timeFromAcceleration);
-    }
+    
 
+    public static float CalculateCubicLinearRequiredTime(float distance, float maxVelocity, float maxAcceleration)
+    {
+        // For linear movement, use the same calculation as joint movement
+        return CalculateCubicJointRequiredTime(distance, maxVelocity, maxAcceleration);
+    }
+    public static float CalculateCubicJointRequiredTime(float distance, float maxVelocity, float maxAcceleration)
+{
+    return CalculateCubicJointTrajectory(0, distance, 0, 0);
+}
     // Trapezoidal trajectory time calculation
-    public static float CalculateTrapezoidalTime(float distance, float maxVelocity, float maxAcceleration)
+    public static float CalculateTrapezoidalJointTime(float distance, float maxVelocity, float maxAcceleration)
     {
         float dq = Mathf.Abs(distance);
         float direction = Mathf.Sign(distance);
@@ -47,35 +57,42 @@ public static class TrajectoryCalculator
     }
 
     // Centralized trajectory calculation function
-    public static float CalculateTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime, 
-        TrajectoryType trajectoryType = TrajectoryType.Cubic, bool timeGiven = false, bool blendEnabled = false, float maxVelocity = 30f, float maxAcceleration = 60f)
+    public static float CalculateJointTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime, 
+                TrajectoryType trajectoryType, bool timeGiven = false, bool blendEnabled = false, float maxVelocity = 30f, float maxAcceleration = 60f)
     {
         switch (trajectoryType)
         {
-            case TrajectoryType.Cubic:
-                return CalculateCubicTrajectory(startAngle, shortestAngle, currentTime, totalTime);
+            case TrajectoryType.JointCubic:
+                return CalculateCubicJointTrajectory(startAngle, shortestAngle, currentTime, totalTime);
             
-            case TrajectoryType.Trapezoidal:
-                return CalculateTrapezoidalTrajectory(startAngle, shortestAngle, currentTime, totalTime, timeGiven, maxVelocity, maxAcceleration);
+            case TrajectoryType.JointTrapezoidal:
+                return CalculateTrapezoidalJointTrajectory(startAngle, shortestAngle, currentTime, totalTime, timeGiven, maxVelocity, maxAcceleration);
             
-            case TrajectoryType.Linear:
-                return CalculateLinearTrajectory(startAngle, shortestAngle, currentTime, totalTime);
+            case TrajectoryType.JointCubicBlend:
+                return CalculateCubicJointBlendTrajectory(startAngle, shortestAngle, currentTime, totalTime, blendEnabled);
+            
+            
             
             default:
-                return CalculateCubicTrajectory(startAngle, shortestAngle, currentTime, totalTime);
+                return CalculateCubicJointTrajectory(startAngle, shortestAngle, currentTime, totalTime);
         }
     }
 
+    
 
-    public static float CalculateCubicTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime)
+    public static float CalculateCubicJointTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime)
     {
         return (float)(startAngle +
             ((3 / Math.Pow(totalTime, 2)) * shortestAngle * (currentTime * currentTime)) +
             ((-2 / Math.Pow(totalTime, 3)) * shortestAngle * Math.Pow(currentTime, 3)));
     }
 
+    public static float CalculateCubicJointBlendTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime, bool blendEnabled)
+    {
+        return CalculateCubicJointTrajectory(startAngle, shortestAngle, currentTime, totalTime);
+    }
     // Trapezoidal trajectory calculation
-    public static float CalculateTrapezoidalTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime, bool timeGiven, float maxVelocity = 30f, float maxAcceleration = 60f)
+    public static float CalculateTrapezoidalJointTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime, bool timeGiven, float maxVelocity = 30f, float maxAcceleration = 60f)
     {
         // Filter out very small angles
         if (Mathf.Abs(startAngle) < 0.01f) startAngle = 0f;
@@ -136,11 +153,39 @@ public static class TrajectoryCalculator
         return qi;
     }
 
-    // Placeholder for linear trajectory (to be implemented)
-    public static float CalculateLinearTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime)
+
+
+    // Centralized trajectory calculation function
+    public static float CalculateLinearTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime, 
+                 TrajectoryType trajectoryType, bool timeGiven = false, bool blendEnabled = false, float maxVelocity = 30f, float maxAcceleration = 60f)
     {
-        // TODO: Implement linear trajectory
-        // For now, fall back to cubic
-        return CalculateCubicTrajectory(startAngle, shortestAngle, currentTime, totalTime);
+        switch (trajectoryType)
+        {
+            case TrajectoryType.LinearCubic:
+                return CalculateCubicLinearTrajectory(startAngle, shortestAngle, currentTime, totalTime);
+            
+            case TrajectoryType.LinearTrapezoidal:
+                return CalculateTrapezoidalLinearTrajectory(startAngle, shortestAngle, currentTime, totalTime, timeGiven, maxVelocity, maxAcceleration);
+            
+           
+            default:
+                return CalculateCubicLinearTrajectory(startAngle, shortestAngle, currentTime, totalTime);
+        }
     }
+
+
+    // Linear trajectory calculation (same as cubic for now)
+    public static float CalculateCubicLinearTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime)
+    {
+        return (float)(startAngle +
+            ((3 / Math.Pow(totalTime, 2)) * shortestAngle * (currentTime * currentTime)) +
+            ((-2 / Math.Pow(totalTime, 3)) * shortestAngle * Math.Pow(currentTime, 3)));
+    }
+
+    public static float CalculateTrapezoidalLinearTrajectory(float startAngle, float shortestAngle, float currentTime, float totalTime, bool timeGiven, float maxVelocity = 30f, float maxAcceleration = 60f)
+    {
+        // For linear movement, use the same trapezoidal calculation as joint movement
+        return CalculateTrapezoidalJointTrajectory(startAngle, shortestAngle, currentTime, totalTime, timeGiven, maxVelocity, maxAcceleration);
+    }
+
 } 

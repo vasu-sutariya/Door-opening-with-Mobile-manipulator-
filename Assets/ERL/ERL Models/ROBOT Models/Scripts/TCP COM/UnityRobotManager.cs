@@ -48,7 +48,7 @@ public class UnityRobotManager : MonoBehaviour
 
     void Start()
     {
-        //ConnectToRobot();
+        ConnectToRobot();
     }
 
     void Update()
@@ -140,7 +140,17 @@ public class UnityRobotManager : MonoBehaviour
     public void SendMoveJCommand(float[] jointPositions, float acceleration, float velocity, float t = 0f, float r = 0f)
     {
 
-        
+        Debug.Log("Sending servoj command: " + string.Join(", ", jointPositions));
+        // Normalize joint angles to be within -180 and 180 degrees
+        float[] normalizedJoints = new float[6];
+        for (int i = 0; i < 6; i++)
+        {
+            float angle = jointPositions[i];
+            angle = ((angle + 180f) % 360f + 360f) % 360f - 180f;
+            normalizedJoints[i] = angle;
+        }
+        jointPositions = normalizedJoints;
+        Debug.Log("Normalized joint positions: " + string.Join(", ", jointPositions));
 
         if (!isCommandConnected || commandStream == null) 
         {
@@ -171,11 +181,7 @@ public class UnityRobotManager : MonoBehaviour
 
     public void SendServoJCommand(float[] jointPositions, float lookaheadTime = 0.1f, int gain = 300)
     {
-        if (!isCommandConnected || commandStream == null) 
-        {
-            Debug.LogWarning("Command connection not available");
-            return;
-        }
+        
 
         try
         {
