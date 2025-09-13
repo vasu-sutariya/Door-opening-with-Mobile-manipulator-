@@ -649,8 +649,10 @@ def gripper():
   current_speed = [-1,-1,-1,-1]
   current_force = [-1,-1,-1,-1]
 
+
+  rq_set_speed(40)
   #rq_activate_and_wait()
-  rq_move_and_wait(0)
+  rq_move_and_wait(220)
   
 end
  

@@ -8,7 +8,7 @@ using System.Threading;
 public class UnityRobotManager : MonoBehaviour
 {
     [Header("Robot Connection Settings")]
-    public string robotIP = "192.168.1.100";
+    public string robotIP = "192.168.12.100";
     public int dataPort = 30002;    // For reading robot state
     public int commandPort = 30003; // For sending commands
     
@@ -18,6 +18,8 @@ public class UnityRobotManager : MonoBehaviour
     public Text robotStatusText;
     public Text connectionStatusText;
     
+    
+
     [Header("Debug")]
     public bool showDebugInfo = true;
     
@@ -46,7 +48,7 @@ public class UnityRobotManager : MonoBehaviour
 
     void Start()
     {
-        ConnectToRobot();
+        //ConnectToRobot();
     }
 
     void Update()
@@ -137,6 +139,9 @@ public class UnityRobotManager : MonoBehaviour
     // Command sending methods
     public void SendMoveJCommand(float[] jointPositions, float acceleration, float velocity, float t = 0f, float r = 0f)
     {
+
+        
+
         if (!isCommandConnected || commandStream == null) 
         {
             Debug.LogWarning("Command connection not available");
@@ -552,8 +557,10 @@ public class UnityRobotManager : MonoBehaviour
         return isCommandConnected;
     }
 
-    // Send script file to robot (converted from Python socket UR send file)
-    public void SendScriptFile(string scriptFilePath)
+ 
+
+    // Send URScript string directly to robot
+    public void SendURScript(string script)
     {
         if (!isCommandConnected || commandStream == null)
         {
@@ -563,54 +570,20 @@ public class UnityRobotManager : MonoBehaviour
 
         try
         {
-            // Read the script file
-            string scriptContent = System.IO.File.ReadAllText(scriptFilePath);
-            
             // Send the script as a single command with proper formatting
-            string formattedScript = scriptContent + "\n";
+            string formattedScript = script + "\n";
             byte[] scriptBytes = Encoding.UTF8.GetBytes(formattedScript);
             
             commandStream.Write(scriptBytes, 0, scriptBytes.Length);
             commandStream.Flush(); // Ensure data is sent immediately
             
-            Debug.Log($"Successfully sent script file: {scriptFilePath}");
+            Debug.Log("Successfully sent URScript");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"Error sending script file: {e.Message}");
+            Debug.LogError($"Error sending URScript: {e.Message}");
         }
     }
-
-    // Convenience method to send Gripper script
-    public void SendGripperScript()
-    {
-        if (!isCommandConnected || commandStream == null)
-        {
-            Debug.LogWarning("Command connection not available");
-            return;
-        }
-
-        try
-        {
-            // Send a simple gripper initialization command instead of the full script
-            // This prevents the "Index out of range" error by using a simpler approach
-            string gripperCommand = "def gripper_init():\n" +
-                                  "  socket_open(\"127.0.0.1\", 63352, \"1\")\n" +
-                                  "  socket_set_var(\"SID\", 9, \"1\")\n" +
-                                  "  ack = socket_read_byte_list(3, \"1\")\n" +
-                                  "end\n" +
-                                  "gripper_init()\n";
-            
-            byte[] commandBytes = Encoding.UTF8.GetBytes(gripperCommand);
-            commandStream.Write(commandBytes, 0, commandBytes.Length);
-            commandStream.Flush();
-            
-            Debug.Log("Successfully sent gripper initialization command");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Error sending gripper script: {e.Message}");
-        }
-    }
+ 
 
 } 

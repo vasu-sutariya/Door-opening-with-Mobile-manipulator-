@@ -46,18 +46,29 @@ public class UR16eInverseKinematics : MonoBehaviour
     {
         if (baseTransform != null)
         {
-            // Flip Y and Z axes, add 90 degree X offset, then convert to matrix
-            Vector3 flippedPosition = new Vector3(baseTransform.position.x, -baseTransform.position.y, -baseTransform.position.z);
-            Vector3 flippedRotation = new Vector3(-baseTransform.eulerAngles.x + 90f, baseTransform.eulerAngles.y, -baseTransform.eulerAngles.z);
+            // Convert from Unity coordinate system to standard robotics coordinate system
+            // Unity: X-right, Y-up, Z-forward
+            // Standard: X-forward, Y-left, Z-up
+            Vector3 standardPosition = new Vector3(
+                baseTransform.position.z,  // Unity Z -> Standard X (forward)
+                -baseTransform.position.x, // Unity X -> Standard Y (left, negated)
+                baseTransform.position.y   // Unity Y -> Standard Z (up)
+            );
+            Vector3 standardRotation = new Vector3(
+                baseTransform.eulerAngles.z,  // Unity Z -> Standard X
+                -baseTransform.eulerAngles.x, // Unity X -> Standard Y (negated)
+                -baseTransform.eulerAngles.y  // Unity Y -> Standard Z (negated)
+            );
             
-            baseToOriginUr3 = AngleConvert.PoseToTransform(flippedPosition.x, flippedPosition.y, flippedPosition.z,
-                                                          flippedRotation.x, flippedRotation.y, flippedRotation.z);
+            baseToOriginUr3 = AngleConvert.PoseToTransform(standardPosition.x, standardPosition.y, standardPosition.z,
+                                                          standardRotation.x, standardRotation.y, standardRotation.z);
         }
         else
         {
             baseToOriginUr3 = Matrix4x4.identity;
         }
         Matrix4x4 T_base = baseToOriginUr3;
+        Debug.Log("T_base: " + T_base);
         Matrix4x4 T_tool = AngleConvert.PoseToTransform(tcpOffset.x, tcpOffset.y, tcpOffset.z, 0, 0, 0);
 
         // Transform desired pose to base frame
@@ -176,12 +187,22 @@ public class UR16eInverseKinematics : MonoBehaviour
         // Start with base transform
         if (baseTransform != null)
         {
-            // Flip Y and Z axes, add 90 degree X offset, then convert to matrix
-            Vector3 flippedPosition = new Vector3(baseTransform.position.x, -baseTransform.position.y, -baseTransform.position.z);
-            Vector3 flippedRotation = new Vector3(-baseTransform.eulerAngles.x, baseTransform.eulerAngles.y, -baseTransform.eulerAngles.z);
+            // Convert from Unity coordinate system to standard robotics coordinate system
+            // Unity: X-right, Y-up, Z-forward
+            // Standard: X-forward, Y-left, Z-up
+            Vector3 standardPosition = new Vector3(
+                baseTransform.position.z,  // Unity Z -> Standard X (forward)
+                -baseTransform.position.x, // Unity X -> Standard Y (left, negated)
+                baseTransform.position.y   // Unity Y -> Standard Z (up)
+            );
+            Vector3 standardRotation = new Vector3(
+                baseTransform.eulerAngles.z,  // Unity Z -> Standard X
+                -baseTransform.eulerAngles.x, // Unity X -> Standard Y (negated)
+                -baseTransform.eulerAngles.y  // Unity Y -> Standard Z (negated)
+            );
             
-            baseToOriginUr3 = AngleConvert.PoseToTransform(flippedPosition.x, flippedPosition.y, flippedPosition.z,
-                                                          flippedRotation.x, flippedRotation.y, flippedRotation.z);
+            baseToOriginUr3 = AngleConvert.PoseToTransform(standardPosition.x, standardPosition.y, standardPosition.z,
+                                                          standardRotation.x, standardRotation.y, standardRotation.z);
         }
         else
         {

@@ -1,78 +1,152 @@
 using UnityEngine;
-using System.IO;
+using System.Net.Sockets;
+using System.Text;
 
 public class Robot_2f_85 : MonoBehaviour
-{
-    [Header("Robot Manager Reference")]
-    public UnityRobotManager robotManager;
+{ 
     
-    [Header("Script File Path")]
-    public string gripperScriptPath = "Gripper.script";
-    
-    
-    public void SetGripperPosition(int position)
+    [Header("Gripper Settings")]
+    public int gripperSpeed = 255;
+    public int gripperForce = 255;
+
+
+    [Header("Robot Connection Settings")]
+    public string robotIP = "192.168.12.100";
+    public int gripperPort = 63352;    
+    private TcpClient gripperClient;
+    private NetworkStream gripperStream;
+    private bool isGripperConnected = false;
+
+    void Start()
     {
-        // Clamp position to valid range
-        position = Mathf.Clamp(position, 0, 220);
-        
+        //ConnectToGripper();
+    }
+
+    public void ConnectToGripper()
+    {
         try
         {
-            // Get the full path to the script file in StreamingAssets
-            // Remove "StreamingAssets/" prefix if present to avoid double path
-            string fileName = gripperScriptPath.Replace("StreamingAssets/", "").Replace("StreamingAssets\\", "");
-            string fullPath = Path.Combine(Application.streamingAssetsPath, fileName);
+            Debug.Log($"Attempting to connect to UR10 gripper port at {robotIP}:{gripperPort}");
+            gripperClient = new TcpClient();
+            gripperClient.Connect(robotIP, gripperPort);
+            gripperStream = gripperClient.GetStream();
+            isGripperConnected = true;
+        }
+        catch (SocketException e)
+        {
+            Debug.LogError($"Gripper port connection error: {e.Message}");
+        }
+    }
+
+       // Send URScript string directly to robot
+    public void SendURScript(string script)
+    {
+        if (!isGripperConnected || gripperStream == null)
+        {
+            Debug.LogWarning("Command connection not available");
+            return;
+        }
+
+        try
+        {
+            // Send the script as a single command with proper formatting
+            string formattedScript = script + "\n";
+            byte[] scriptBytes = Encoding.UTF8.GetBytes(formattedScript);
             
-            // Read the current script file
-            string scriptContent = File.ReadAllText(fullPath);
+            gripperStream.Write(scriptBytes, 0, scriptBytes.Length);
+            gripperStream.Flush(); // Ensure data is sent immediately
             
-            // Replace the rq_move_and_wait line with new position
-            // Use regex to find any rq_move_and_wait line regardless of current value
-            System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex(@"rq_move_and_wait\(\d+\)");
-            string newLine = $"rq_move_and_wait({position})";
-            
-            if (regex.IsMatch(scriptContent))
-            {
-                scriptContent = regex.Replace(scriptContent, newLine);
-                
-                // Write the modified content back to the file
-                File.WriteAllText(fullPath, scriptContent);
-                
-                Debug.Log($"Updated gripper script with position: {position}");
-                
-                // Send the modified script to the robot
-                if (robotManager != null)
-                {
-                    robotManager.SendScriptFile(fullPath);
-                }
-                else
-                {
-                    Debug.LogError("Robot Manager reference is not assigned!");
-                }
-            }
-            else
-            {
-                Debug.LogError("Could not find rq_move_and_wait line in script file");
-            }
+            Debug.Log("Successfully sent URScript to gripper");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"Error setting gripper position: {e.Message}");
+            Debug.LogError($"Error sending URScript to gripper: {e.Message}");
         }
     }
-    
-    /// <summary>
-    /// Convenience method to open gripper (position 0)
-    /// </summary>
-    public void OpenGripper()
+
+    // Activate the gripper
+    public void SetGripperActivate()
     {
-        SetGripperPosition(0);
+            
+
+        string activateScript = $@"
+def activate_gripper():
+    socket_open(""127.0.0.1"", 63352)
+    sleep(0.1)
+    socket_send_string(""SET ACT 1\n"")
+    sleep(0.1)
+    socket_send_string(""SET SPE {gripperSpeed}\n"")
+    sleep(0.1)
+    socket_send_string(""SET FOR {gripperForce}\n"")
+    sleep(0.1)
+    socket_close()
+end
+activate_gripper()";
+        
+        SendURScript(activateScript);
     }
-    
-    /// <summary>
-    /// Convenience method to close gripper (position 220)
-    /// </summary>
-    public void CloseGripper()
+
+    // Set gripper position (0-255)
+    public void SetGripperPosition(int position)
+    { 
+
+        position = Mathf.Clamp(position, 0, 255);
+        string moveScript = $@"
+def move_gripper():
+    socket_open(""127.0.0.1"", 63352)
+    sleep(0.1)
+    socket_send_string(""SET POS {position}\n"")
+    sleep(0.1)
+    socket_close()
+end
+move_gripper()";
+        
+        SendURScript(moveScript);
+    }
+
+    // Set gripper force (0-255)
+    public void SetGripperForce(int force)
+    { 
+
+        force = Mathf.Clamp(force, 0, 255);
+        string forceScript = $@"
+def set_gripper_force():
+    socket_open(""127.0.0.1"", 63352)
+    sleep(0.1)
+    socket_send_string(""SET FOR {force}\n"")
+    sleep(0.1)
+    socket_close()
+end
+set_gripper_force()";
+        
+        SendURScript(forceScript);
+    }
+            
+    // Set gripper speed (0-255)
+    public void SetGripperSpeed(int speed)
     {
-        SetGripperPosition(220);
+
+        speed = Mathf.Clamp(speed, 0, 255);
+        string speedScript = $@"
+def set_gripper_speed():
+    socket_open(""127.0.0.1"", 63352)
+    sleep(0.1)
+    socket_send_string(""SET SPE {speed}\n"")
+    sleep(0.1)
+    socket_close()
+end
+set_gripper_speed()";
+        
+        SendURScript(speedScript);
+    }
+
+ 
+
+    // Set gripper stroke in mm (0-85mm)
+    public void SetGripperStroke(float stroke)
+    {
+        // Convert stroke (0-85mm) to gripper position (0-255)
+        int position = Mathf.RoundToInt((stroke / 85.0f) * 255.0f);
+        SetGripperPosition(position);
     }
 }

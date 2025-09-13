@@ -4,6 +4,12 @@ using UnityEditor;
 
 public class Unity_2F_85 : MonoBehaviour
 {
+
+    [Header("UnitytoRobotRatio")]
+    public int UnitytoRobotRatio = 1;
+
+    public Robot_2f_85 robot_2f_85;
+
     // Private constants.
     //  The motion parameters of the Robotiq 2F-85 end-effector.
     //      Stroke in mm.
@@ -20,6 +26,7 @@ public class Unity_2F_85 : MonoBehaviour
     // Private variables.
     //  Motion parameters.
     private float speed;
+    private float force;
     private float __stroke;
     private float __theta;
     private float __theta_i;
@@ -159,12 +166,22 @@ public class Unity_2F_85 : MonoBehaviour
         joint2.yDrive = drive2;
     }
 
+
  
-    public void MoveGripperToPosition(float targetStroke, float moveSpeed = 12.5f)
+    public void MoveGripperToPosition(int targetStroke , int speed1 = 100 ,bool sendToRobot = false, int force1 = 255 )
     {
+        if (sendToRobot)
+        {
+            robot_2f_85.SetGripperPosition(targetStroke);
+            robot_2f_85.SetGripperForce(force1);
+            robot_2f_85.SetGripperSpeed(speed1);
+        }
+
         stroke = Mathf.Clamp(220 - targetStroke, s_min, s_max);
-        speed = Mathf.Clamp(moveSpeed, v_min, v_max);
+        force = force1;
+        speed = speed1;
         start_movemet = true;
+        Debug.Log("start_movemet: " + start_movemet + " targetStroke: " + targetStroke + " speed1: " + speed1 + " force1: " + force1);
     }
  
     public bool IsGripperInPosition()
